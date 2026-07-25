@@ -1,0 +1,15 @@
+# Fichiers temporaires Excel
+~$*.xls*
+*.tmp
+*.bak
+*.backup-*.xlsm
+
+# Fichiers système et éditeurs
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
