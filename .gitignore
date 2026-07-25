@@ -3,6 +3,7 @@
 *.tmp
 *.bak
 *.backup-*.xlsm
+Projet_VBA_BS_corrige.xlsm
 
 # Fichiers système et éditeurs
 .DS_Store

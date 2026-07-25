@@ -1,6 +1,6 @@
 param(
     [string]$WorkbookPath = (Join-Path $PSScriptRoot "..\Projet_VBA_BS.xlsm"),
-    [switch]$NoBackup
+    [string]$OutputPath = (Join-Path $PSScriptRoot "..\Projet_VBA_BS_corrige.xlsm")
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,10 +8,11 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $sourceDir = Join-Path $repoRoot "src"
 $resolvedWorkbook = (Resolve-Path $WorkbookPath).Path
+$resolvedOutput = [System.IO.Path]::GetFullPath($OutputPath)
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $backupPath = [System.IO.Path]::Combine(
-    [System.IO.Path]::GetDirectoryName($resolvedWorkbook),
-    [System.IO.Path]::GetFileNameWithoutExtension($resolvedWorkbook) +
+    [System.IO.Path]::GetDirectoryName($resolvedOutput),
+    [System.IO.Path]::GetFileNameWithoutExtension($resolvedOutput) +
         ".backup-" + $timestamp + ".xlsm"
 )
 $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) (
@@ -28,6 +29,14 @@ function Write-AnsiCopy {
     )
 
     $utf8 = [System.Text.UTF8Encoding]::new($false)
+    try {
+        [System.Text.Encoding]::RegisterProvider(
+            [System.Text.CodePagesEncodingProvider]::Instance
+        )
+    }
+    catch {
+        # Windows PowerShell 5 utilise déjà les pages de codes Windows.
+    }
     $windows1252 = [System.Text.Encoding]::GetEncoding(1252)
     $text = [System.IO.File]::ReadAllText($Source, $utf8)
     $text = $text -replace "`r?`n", "`r`n"
@@ -59,9 +68,16 @@ try {
         throw "Le dossier src est introuvable : $sourceDir"
     }
 
-    if (-not $NoBackup) {
-        Copy-Item -LiteralPath $resolvedWorkbook -Destination $backupPath
-        Write-Host "Sauvegarde créée : $backupPath"
+    if ($resolvedOutput -eq $resolvedWorkbook) {
+        throw "Le fichier de sortie doit être différent du classeur modèle."
+    }
+
+    $outputDirectory = [System.IO.Path]::GetDirectoryName($resolvedOutput)
+    New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
+
+    if (Test-Path $resolvedOutput) {
+        Copy-Item -LiteralPath $resolvedOutput -Destination $backupPath
+        Write-Host "Sauvegarde de la version corrigée précédente : $backupPath"
     }
 
     New-Item -ItemType Directory -Path $tempDir | Out-Null
@@ -109,8 +125,8 @@ Dans Excel :
     $excel.Run("'" + $workbook.Name + "'!LanceTout", $false)
 
     $workbook.Worksheets("Portfolio").Activate()
-    $workbook.Save()
-    Write-Host "Projet VBA synchronisé et classeur recalculé : $resolvedWorkbook"
+    $workbook.SaveAs($resolvedOutput, 52)
+    Write-Host "Classeur corrigé créé : $resolvedOutput"
 }
 finally {
     if ($null -ne $workbook) {
