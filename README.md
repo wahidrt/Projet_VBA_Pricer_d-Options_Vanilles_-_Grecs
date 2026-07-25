@@ -40,15 +40,18 @@ Les paramètres de taux et de volatilité sont saisis sous forme décimale :
 
 ## Utilisation
 
-1. Téléchargez le dépôt complet avec **Code > Download ZIP**, puis extrayez-le.
-2. Fermez Excel.
-3. Dans Excel, activez temporairement **Accès approuvé au modèle d’objet du
-   projet VBA** dans les paramètres du Centre de gestion de la confidentialité.
-4. Double-cliquez sur `Installer-Corrections.cmd`.
-5. Ouvrez le nouveau fichier `Projet_VBA_BS_corrige.xlsm`.
-6. Désactivez de nouveau l’accès approuvé au projet VBA.
-7. Autorisez les macros uniquement si le dépôt téléchargé est bien celui-ci.
-8. Renseignez les hypothèses puis utilisez **Ouvrir Portfolio** et
+1. Téléchargez le dépôt complet avec **Code > Download ZIP**.
+2. Avant de l’extraire, faites un clic droit sur le ZIP, ouvrez **Propriétés**,
+   cochez **Débloquer** si cette option apparaît, puis extrayez le dossier.
+3. Ouvrez Excel, puis activez temporairement **Accès approuvé au modèle d’objet
+   du projet VBA** dans les paramètres du Centre de gestion de la
+   confidentialité.
+4. Fermez Excel.
+5. Double-cliquez sur `Installer-Corrections.cmd`.
+6. Ouvrez le nouveau fichier `Projet_VBA_BS_corrige.xlsm`.
+7. Désactivez de nouveau l’accès approuvé au projet VBA.
+8. Autorisez les macros uniquement si le dépôt téléchargé est bien celui-ci.
+9. Renseignez les hypothèses puis utilisez **Ouvrir Portfolio** et
    **Calculer & Tracer**.
 
 Une prime vide est automatiquement remplacée par la prime théorique
