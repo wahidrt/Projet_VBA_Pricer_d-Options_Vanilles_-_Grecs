@@ -15,14 +15,9 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 
-' --- UTILS ---
-Private Function ToDbl(ByVal v As Variant) As Double
-    ToDbl = Val(Replace(CStr(v), ",", "."))
-End Function
-
 Private Sub UserForm_Initialize()
-    ' Style Flat / Clean
     Me.BackColor = RGB(250, 250, 250)
+
     Dim ctrl As Control
     For Each ctrl In Me.Controls
         If TypeName(ctrl) = "CommandButton" Then
@@ -37,70 +32,213 @@ Private Sub UserForm_Initialize()
             ctrl.BorderColor = RGB(200, 200, 200)
         End If
     Next ctrl
-    
-    ' Defaults
+
     txtUnderlying.Text = "Asset"
-    cboType.Clear: cboType.AddItem "CALL": cboType.AddItem "PUT": cboType.Value = "CALL"
-    cboSide.Clear: cboSide.AddItem "Achat": cboSide.AddItem "Vente": cboSide.Value = "Achat"
+    cboType.Clear
+    cboType.AddItem "CALL"
+    cboType.AddItem "PUT"
+    cboType.Value = "CALL"
+
+    cboSide.Clear
+    cboSide.AddItem "Achat"
+    cboSide.AddItem "Vente"
+    cboSide.Value = "Achat"
+
     txtQty.Text = "1"
     txtK.Text = "100"
     txtMatDays.Text = "30"
-    txtPrime.Text = "0"
-    
+    txtPrime.Text = ""
+
     RefreshList
 End Sub
 
 Private Sub cmdAdd_Click()
-    Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("Portfolio")
-    If ToDbl(txtK.Text) <= 0 Then MsgBox "Strike invalide": Exit Sub
-    
-    Dim row&: row = ws.Cells(ws.Rows.Count, "E").End(xlUp).row + 1
-    If row < 4 Then row = 4
-    
-    Dim id&: id = 1
-    If row > 4 Then id = Application.Max(ws.Range("E4:E" & row - 1)) + 1
-    
-    ws.Cells(row, "E").Value = id
-    ws.Cells(row, "F").Value = txtUnderlying.Text
-    ws.Cells(row, "G").Value = cboType.Value
-    ws.Cells(row, "H").Value = cboSide.Value
-    ws.Cells(row, "I").Value = ToDbl(txtQty.Text)
-    ws.Cells(row, "J").Value = ToDbl(txtK.Text)
-    ws.Cells(row, "K").Value = ToDbl(txtMatDays.Text)
-    If ToDbl(txtPrime.Text) > 0 Then ws.Cells(row, "L").Value = ToDbl(txtPrime.Text) Else ws.Cells(row, "L").Value = ""
-    
+    Dim underlying As String
+    Dim quantity As Double
+    Dim strike As Double
+    Dim maturityDays As Double
+    Dim premium As Double
+    Dim hasPremium As Boolean
+
+    underlying = Trim$(txtUnderlying.Text)
+    If Len(underlying) = 0 Then
+        MsgBox "Le nom du sous-jacent est obligatoire.", _
+               vbExclamation, "Position invalide"
+        Exit Sub
+    End If
+
+    If Not TryParseDouble(txtQty.Text, quantity) Or quantity <= 0# Then
+        MsgBox "La quantité doit être strictement positive.", _
+               vbExclamation, "Position invalide"
+        Exit Sub
+    End If
+
+    If Not TryParseDouble(txtK.Text, strike) Or strike <= 0# Then
+        MsgBox "Le strike doit être strictement positif.", _
+               vbExclamation, "Position invalide"
+        Exit Sub
+    End If
+
+    If Not TryParseDouble(txtMatDays.Text, maturityDays) Or maturityDays <= 0# Then
+        MsgBox "La maturité doit être un nombre de jours strictement positif.", _
+               vbExclamation, "Position invalide"
+        Exit Sub
+    End If
+
+    If Abs(maturityDays - Fix(maturityDays)) > 0.0000001 Then
+        MsgBox "La maturité doit être saisie en nombre entier de jours.", _
+               vbExclamation, "Position invalide"
+        Exit Sub
+    End If
+
+    hasPremium = Len(Trim$(txtPrime.Text)) > 0
+    If hasPremium Then
+        If Not TryParseDouble(txtPrime.Text, premium) Or premium < 0# Then
+            MsgBox "La prime doit être positive ou nulle. " & _
+                   "Laissez le champ vide pour utiliser la prime théorique.", _
+                   vbExclamation, "Position invalide"
+            Exit Sub
+        End If
+    End If
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets(Portfolio.SHEET_PORT)
+
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, "E").End(xlUp).Row
+
+    If lastRow >= 4 Then
+        Dim existingUnderlying As String
+        Dim existingMaturity As Double
+
+        existingUnderlying = Trim$(CStr(ws.Cells(4, "F").Value2))
+        If Len(existingUnderlying) > 0 Then
+            If StrComp(existingUnderlying, underlying, vbTextCompare) <> 0 Then
+                MsgBox "Ce modèle accepte un seul sous-jacent : " & _
+                       existingUnderlying & ".", _
+                       vbExclamation, "Sous-jacent différent"
+                Exit Sub
+            End If
+        End If
+
+        If IsNumeric(ws.Cells(4, "K").Value2) Then
+            existingMaturity = CDbl(ws.Cells(4, "K").Value2)
+            If Abs(existingMaturity - maturityDays) > 0.0000001 Then
+                MsgBox "Toutes les positions doivent avoir la même maturité " & _
+                       "pour construire un PnL à l'échéance cohérent.", _
+                       vbExclamation, "Maturité différente"
+                Exit Sub
+            End If
+        End If
+    End If
+
+    Dim targetRow As Long
+    targetRow = lastRow + 1
+    If targetRow < 4 Then targetRow = 4
+
+    Dim positionId As Long
+    positionId = 1
+    If targetRow > 4 Then
+        positionId = CLng(Application.Max(ws.Range("E4:E" & targetRow - 1))) + 1
+    End If
+
+    ws.Cells(targetRow, "E").Value = positionId
+    ws.Cells(targetRow, "F").Value = underlying
+    ws.Cells(targetRow, "G").Value = UCase$(cboType.Value)
+    ws.Cells(targetRow, "H").Value = cboSide.Value
+    ws.Cells(targetRow, "I").Value = quantity
+    ws.Cells(targetRow, "J").Value = strike
+    ws.Cells(targetRow, "K").Value = CLng(maturityDays)
+
+    If hasPremium Then
+        ws.Cells(targetRow, "L").Value = premium
+    Else
+        ws.Cells(targetRow, "L").ClearContents
+    End If
+
+    Portfolio.InvalidateResults
     RefreshList
 End Sub
 
 Private Sub cmdDelete_Click()
-    If lstPositions.ListIndex < 0 Then Exit Sub
-    Dim idSel&: idSel = CLng(lstPositions.List(lstPositions.ListIndex, 0))
-    Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("Portfolio")
-    Dim i&, last&
-    last = ws.Cells(ws.Rows.Count, "E").End(xlUp).row
-    For i = last To 4 Step -1
-        If ws.Cells(i, "E").Value = idSel Then ws.Rows(i).Delete: Exit For
-    Next i
+    If lstPositions.ListIndex < 0 Then
+        MsgBox "Sélectionnez d'abord une position.", _
+               vbInformation, "Aucune sélection"
+        Exit Sub
+    End If
+
+    Dim selectedId As Long
+    selectedId = CLng(lstPositions.List(lstPositions.ListIndex, 0))
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets(Portfolio.SHEET_PORT)
+
+    Dim rowIndex As Long
+    Dim lastRow As Long
+    Dim found As Boolean
+    lastRow = ws.Cells(ws.Rows.Count, "E").End(xlUp).Row
+
+    For rowIndex = lastRow To 4 Step -1
+        If ws.Cells(rowIndex, "E").Value2 = selectedId Then
+            ' Ne jamais supprimer toute la ligne : les paramètres de marché
+            ' se trouvent dans les colonnes A:C de la même feuille.
+            ws.Range("E" & rowIndex & ":L" & rowIndex).Delete Shift:=xlUp
+            found = True
+            Exit For
+        End If
+    Next rowIndex
+
+    If Not found Then
+        MsgBox "La position sélectionnée n'a pas été trouvée.", _
+               vbExclamation, "Suppression impossible"
+    Else
+        Portfolio.InvalidateResults
+    End If
+
     RefreshList
 End Sub
 
 Private Sub RefreshList()
     lstPositions.Clear
     lstPositions.ColumnCount = 8
-    lstPositions.ColumnWidths = "20;40;30;30;30;30;30;30"
-    Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("Portfolio")
-    Dim last&: last = ws.Cells(ws.Rows.Count, "E").End(xlUp).row
-    If last < 4 Then Exit Sub
-    
-    Dim i&
-    For i = 4 To last
-        lstPositions.AddItem ws.Cells(i, "E").Value
-        lstPositions.List(lstPositions.ListCount - 1, 1) = ws.Cells(i, "F").Value
-        lstPositions.List(lstPositions.ListCount - 1, 2) = ws.Cells(i, "G").Value
-        lstPositions.List(lstPositions.ListCount - 1, 3) = ws.Cells(i, "H").Value
-        lstPositions.List(lstPositions.ListCount - 1, 4) = ws.Cells(i, "I").Value
-        lstPositions.List(lstPositions.ListCount - 1, 5) = ws.Cells(i, "J").Value
-        lstPositions.List(lstPositions.ListCount - 1, 6) = ws.Cells(i, "K").Value
-        lstPositions.List(lstPositions.ListCount - 1, 7) = ws.Cells(i, "L").Value
-    Next i
+    lstPositions.ColumnWidths = "24;60;36;42;42;48;48;48"
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets(Portfolio.SHEET_PORT)
+
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, "E").End(xlUp).Row
+    If lastRow < 4 Then Exit Sub
+
+    Dim rowIndex As Long
+    For rowIndex = 4 To lastRow
+        If Len(Trim$(CStr(ws.Cells(rowIndex, "E").Value2))) > 0 Then
+            lstPositions.AddItem ws.Cells(rowIndex, "E").Value
+            lstPositions.List(lstPositions.ListCount - 1, 1) = ws.Cells(rowIndex, "F").Value
+            lstPositions.List(lstPositions.ListCount - 1, 2) = ws.Cells(rowIndex, "G").Value
+            lstPositions.List(lstPositions.ListCount - 1, 3) = ws.Cells(rowIndex, "H").Value
+            lstPositions.List(lstPositions.ListCount - 1, 4) = ws.Cells(rowIndex, "I").Value
+            lstPositions.List(lstPositions.ListCount - 1, 5) = ws.Cells(rowIndex, "J").Value
+            lstPositions.List(lstPositions.ListCount - 1, 6) = ws.Cells(rowIndex, "K").Value
+            lstPositions.List(lstPositions.ListCount - 1, 7) = ws.Cells(rowIndex, "L").Value
+        End If
+    Next rowIndex
 End Sub
+
+Private Function TryParseDouble(ByVal rawText As String, _
+                                ByRef numberValue As Double) As Boolean
+    Dim normalized As String
+    normalized = Trim$(rawText)
+    If Len(normalized) = 0 Then Exit Function
+
+    If Application.DecimalSeparator = "," Then
+        normalized = Replace(normalized, ".", ",")
+    Else
+        normalized = Replace(normalized, ",", ".")
+    End If
+
+    If Not IsNumeric(normalized) Then Exit Function
+
+    numberValue = CDbl(normalized)
+    TryParseDouble = True
+End Function
