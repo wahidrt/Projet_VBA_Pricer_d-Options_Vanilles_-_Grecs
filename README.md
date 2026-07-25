@@ -3,6 +3,11 @@
 Application Excel/VBA de valorisation et d’analyse d’un portefeuille
 mono-sous-jacent d’options européennes avec le modèle de Black–Scholes.
 
+> **Installation nécessaire :** `Projet_VBA_BS.xlsm` est le classeur modèle
+> sain. Pour obtenir la version corrigée, téléchargez tout le dépôt puis
+> double-cliquez sur `Installer-Corrections.cmd`. Le fichier généré à utiliser
+> est `Projet_VBA_BS_corrige.xlsm`.
+
 ![Tableau de bord du pricer](docs/dashboard.png)
 
 ![Courbes des Grecs](docs/greeks.png)
@@ -35,15 +40,30 @@ Les paramètres de taux et de volatilité sont saisis sous forme décimale :
 
 ## Utilisation
 
-1. Téléchargez `Projet_VBA_BS.xlsm`.
-2. Ouvrez le fichier avec Microsoft Excel sur Windows.
-3. Autorisez les macros uniquement après avoir vérifié leur provenance.
-4. Renseignez le spot, le taux, la volatilité, le dividende et la plage de simulation.
-5. Cliquez sur **Ouvrir Portfolio** pour gérer les positions.
-6. Cliquez sur **Calculer & Tracer** pour recalculer les résultats.
+1. Téléchargez le dépôt complet avec **Code > Download ZIP**, puis extrayez-le.
+2. Fermez Excel.
+3. Dans Excel, activez temporairement **Accès approuvé au modèle d’objet du
+   projet VBA** dans les paramètres du Centre de gestion de la confidentialité.
+4. Double-cliquez sur `Installer-Corrections.cmd`.
+5. Ouvrez le nouveau fichier `Projet_VBA_BS_corrige.xlsm`.
+6. Désactivez de nouveau l’accès approuvé au projet VBA.
+7. Autorisez les macros uniquement si le dépôt téléchargé est bien celui-ci.
+8. Renseignez les hypothèses puis utilisez **Ouvrir Portfolio** et
+   **Calculer & Tracer**.
 
 Une prime vide est automatiquement remplacée par la prime théorique
 Black–Scholes. Une prime égale à zéro est conservée comme une valeur explicite.
+
+### En cas de blocage
+
+- Supprimez toute copie téléchargée avant la version `1.1.1`, puis
+  retéléchargez le dépôt.
+- Si Windows bloque les macros provenant d’Internet, faites un clic droit sur
+  le ZIP téléchargé, ouvrez **Propriétés**, cochez **Débloquer**, puis
+  extrayez-le de nouveau.
+- Si l’installateur indique qu’Excel bloque le projet VBA, activez
+  temporairement l’accès approuvé décrit à l’étape 3, relancez l’installation,
+  puis désactivez ce réglage.
 
 ## Unités des Grecs
 
@@ -60,6 +80,7 @@ Black–Scholes. Une prime égale à zéro est conservée comme une valeur expli
 ```text
 .
 ├── Projet_VBA_BS.xlsm
+├── Installer-Corrections.cmd
 ├── src/
 │   ├── Classe1.cls
 │   ├── DesignModule.bas
@@ -73,9 +94,11 @@ Black–Scholes. Une prime égale à zéro est conservée comme une valeur expli
 └── docs/
 ```
 
-Le fichier `.xlsm` contient la version corrigée du projet VBA et permet
-d’utiliser directement l’application. Les fichiers du dossier `src` sont les
-mêmes sources en version lisible, UTF-8 et comparable dans Git.
+Le fichier `Projet_VBA_BS.xlsm` est conservé comme modèle Excel sain. Les
+sources corrigées se trouvent dans `src`, en UTF-8 et comparables dans Git.
+L’installateur demande à Microsoft Excel d’importer ces sources puis crée
+`Projet_VBA_BS_corrige.xlsm`. Cette méthode évite de réécrire directement le
+format binaire interne du projet VBA.
 
 ## Synchroniser les sources avec le classeur
 
@@ -86,8 +109,10 @@ du dépôt et exécutez :
 powershell -ExecutionPolicy Bypass -File .\scripts\Sync-VbaProject.ps1
 ```
 
-Le script crée une sauvegarde du classeur, importe les modules, applique les
-validations, recalcule la grille et sauvegarde le fichier.
+Le script conserve le modèle intact, importe les modules avec Microsoft Excel,
+applique les validations, recalcule la grille puis crée
+`Projet_VBA_BS_corrige.xlsm`. Si ce fichier existe déjà, il est d’abord
+sauvegardé avec un horodatage.
 
 Excel doit autoriser temporairement l’option :
 **Accès approuvé au modèle d’objet du projet VBA**. Désactivez-la après la
